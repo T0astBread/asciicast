@@ -7,6 +7,7 @@ class AsciiRenderer {
         this.container = container
         this.container.classList.add("ascii-container")
         this.pixelArray = null
+        this.filterQueue = new FilterQueue()
         this.animationTimeoutId = null
     }
 
@@ -21,20 +22,12 @@ class AsciiRenderer {
         let pixel = null
         for(let y = 0; y < height; y++) {
             for(let x = 0; x < width; x++) {
-                pixel = new Pixel(x, y, document.createElement("span"))
+                pixel = new Pixel(x, y, document.createElement("span"), this)
                 this.container.appendChild(pixel.element)
                 this.pixelArray.push(pixel)
             }
             this.container.appendChild(document.createElement("br"))
         }
-    }
-
-    /**
-     * 
-     * @param {boolean} randomAlpha 
-     */
-    setRandomAlpha(randomAlpha) {
-        this.randomAlpha = randomAlpha
     }
 
     forEachPixel(consumer) {
@@ -68,20 +61,6 @@ class AsciiRenderer {
         return this.hiddenContext
     }
 
-    /**
-     * 
-     * @param {ColorFunction} colorFunction 
-     */
-    displayFunction(colorFunction) {
-        const renderTime = this.forEachPixel((x, y, pixel) => pixel.setColor(
-            colorFunction.red(x, y),
-            colorFunction.green(x, y),
-            colorFunction.blue(x, y),
-            this.randomAlpha ? Math.random() : colorFunction.alpha(x, y)
-        ))
-        console.log(`Render took ${this.forEachPixel(renderTime)}ms`)
-    }
-
     drawImageFromHiddenContext(offsetX, offsetY, windowWidth, windowHeight) {
         let imageData = this.hiddenContext.getImageData(offsetX, offsetY, windowWidth, windowHeight)
         const getPixVal = (x, y, offset) => imageData.data[(y * imageData.width + x) * 4 + offset]
@@ -90,23 +69,9 @@ class AsciiRenderer {
                 getPixVal(x, y, 0), 
                 getPixVal(x, y, 1),
                 getPixVal(x, y, 2),
-                this.randomAlpha === true ? Math.random() : getPixVal(x, y, 3)/255
+                getPixVal(x, y, 3)/255
             )
         })
-    }
-
-    /**
-     *
-     * @param {HTMLImageElement} image 
-     */
-    displayImage(image) {
-        let startTimestap = Date.now()
-        this.setUp(image.naturalWidth, image.naturalHeight)
-        this.getHiddenContext()
-        this.hiddenContext.clearRect(0, 0, image.naturalWidth, image.naturalHeight)
-        this.hiddenContext.drawImage(image, 0, 0)
-        this.drawImageFromHiddenContext(0, 0, image.naturalWidth, image.naturalHeight)
-        console.log(`Render took ${Date.now() - startTimestap}ms`)
     }
 
     stopAnimation() {
@@ -114,40 +79,13 @@ class AsciiRenderer {
         clearTimeout(this.animationTimeoutId)
     }
 
-    displaySpritesheetAnimation(spritesheetImage, tileWidth, tileHeight, frameAmount, tileRowLength, frameTime) {
-        const startTimestamp = Date.now()
-
-        let offsetX, offsetY, frameStartTimestamp
-        const drawFrame = frameIndex => {
-            frameIndex = frameIndex%frameAmount
-            frameStartTimestamp = Date.now()
-            offsetY = Math.floor(frameIndex/tileRowLength) * tileHeight
-            offsetX = (frameIndex%tileRowLength) * tileWidth
-            this.animationTimeoutId = setTimeout(() => {
-                this.drawImageFromHiddenContext(offsetX, offsetY, tileWidth, tileHeight)
-                if(frameIndex%10 === 0) console.log(`Last render time: ${Date.now() - frameStartTimestamp}ms`)
-                drawFrame(++frameIndex)
-            }, Math.max(frameTime - (Date.now() - frameStartTimestamp), 0))
-        }
-
-        this.getHiddenContext()
-        this.hiddenCanvas.width = spritesheetImage.naturalWidth
-        this.hiddenCanvas.height = spritesheetImage.naturalHeight
-        this.hiddenContext.clearRect(0, 0, spritesheetImage.naturalWidth, spritesheetImage.naturalHeight)
-        this.hiddenContext.drawImage(spritesheetImage, 0, 0)
-        this.setUp(tileWidth, tileHeight)
-        console.log(`Setup took ${Date.now() - startTimestamp}ms`)
-
-        console.log("Starting spritesheet animation")
-        drawFrame(0)
+    /**
+     * 
+     * @param {Programme} programme 
+     */
+    renderProgramme(programme) {
+        programme.render(this)
     }
-}
-
-class ColorFunction {
-    red(x, y) {}
-    green(x, y) {}
-    blue(x, y) {}
-    alpha(x, y) {}
 }
 
 class Pixel {
@@ -156,17 +94,24 @@ class Pixel {
      * @param {number} x 
      * @param {number} y 
      * @param {HTMLElement} element 
+     * @param {AsciiRenderer} renderer
      */
-    constructor(x, y, element) {
+    constructor(x, y, element, renderer) {
         this.x = x
         this.y = y
         this.element = element
         this.element.innerText = "0"
         this.element.classList.add(`x-${x}`)
         this.element.classList.add(`y-${y}`)
+        this.renderer = renderer
     }
 
     setColor(r, g, b, alpha) {
+        let colorValues = this.renderer.filterQueue.applyFilters([r, g, b, alpha])
+        r = colorValues[0]
+        g = colorValues[1]
+        b = colorValues[2]
+        alpha = colorValues[3]
         this.element.style.color = `rgb(${r}, ${g}, ${b})`
         this.setAlpha(alpha)
     }
@@ -180,5 +125,52 @@ class Pixel {
         else if(alpha < .8333) letter = "W"
         else letter = "#"
         this.element.innerText = letter
+    }
+}
+
+class Programme {
+    /**
+     * 
+     * @param {AsciiRenderer} renderer 
+     */
+    render(renderer) {
+    }
+}
+
+class HiddenCanvasProgramme extends Programme {
+    render(renderer) {
+        renderer.getHiddenContext()
+    }
+}
+
+class FilterQueue {
+    constructor() {
+        this.queue = []
+    }
+
+    /**
+     * 
+     * @param {Filter} filter 
+     */
+    add(filter) {
+        this.queue.push(filter)
+    }
+
+    get(index) {
+        return this.queue[index]
+    }
+
+    applyFilters(colorValues) {
+        this.queue.forEach(filter => {
+            if(filter.active) colorValues = filter.transform(colorValues)
+        })
+        return colorValues
+    }
+}
+
+class Filter {
+    constructor(transform) {
+        this.transform = transform
+        this.active = true
     }
 }

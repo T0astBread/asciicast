@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <link rel="stylesheet" href="../styles.css">
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                min-height: 100vh;
+                margin: 0;
+                background: #222;
+            }
+
+            .panel {
+                /* display: inline-block; */
+            }
+
+            #render-container {
+                font-size: .8em;
+            }
+
+            button {
+                vertical-align: top;
+            }
+
+            img, video {
+                display: none;
+            }
+        </style>
+        <script src="../renderer.js"></script>
+        <script src="../programmes.js"></script>
+        <script src="../filters.js"></script>
+        <title>ascii-render</title>
+    </head>
+    <body>
+        <div class="panel" id="render-container"></div>
+        <div class="panel">
+            <select id="render-function-selector">
+                <optgroup label="Effects">
+                    <option>Gradient</option>
+                </optgroup>
+                <optgroup label="Static Images">
+                    <option>Mokou</option>
+                </optgroup>
+                <optgroup label="Spritesheet Animations">
+                    <option>Google Logo (small)</option>
+                    <option>Google Logo</option>
+                    <option>Partially Transparent</option>
+                </optgroup>
+                <optgroup label="Videos">
+                    <option>Hicc</option>
+                    <option>Hicc (small)</option>
+                    <option>Kill Me Baby Opening</option>
+                    <option>Kill Me Baby Ending</option>
+                </optgroup>
+            </select>
+            <input id="random-alpha-checkbox" type="checkbox" title="Random Alpha"><label for="random-alpha-checkbox">Random Alpha</label>
+            <button>Render</button>
+            <img src="mokou-smol.png">
+            <img src="glogo-sheet-smol.png">
+            <img src="glogo-sheet.png">
+            <img src="transparent-sheet.png">
+            <video id="demo-video" loop>
+                <source src="hicc.mp4">
+            </video>
+            <video id="demo-video-2" loop>
+                <source src="hicc-smol.mp4">
+            </video>
+            <video id="demo-video-with-sound" loop>
+                <source src="killmebaby-op.mp4">
+            </video>
+            <video id="demo-video-with-sound-2" loop>
+                <source src="killmebaby-ed.mp4">
+            </video>
+        </div>
+        <script>
+            let renderer = new AsciiRenderer(document.getElementById("render-container"))
+            renderer.filterQueue.add(randomAlphaFilter)
+            // renderer.filterQueue.add(invertedColorsFilter)
+
+            const videos = document.getElementsByTagName("video")
+            const playVideo = (id, fps) => {
+                for(let i = 0; i < videos.length; i++) {
+                    videos[i].pause()
+                }
+                renderer.renderProgramme(new VideoProgramme(document.getElementById(id), fps))
+            }
+
+            const renderFunctions = []
+            renderFunctions[0] = () => {
+                renderer.setUp(75, 75)
+                renderer.renderProgramme(new ColorFunctionProgramme((x, y, renderer) => {
+                    const rgb = [
+                        (x + 1)/renderer.width,
+                        .3,
+                        .5
+                    ].map(x => Math.floor(x * 255))
+                    rgb.push((x + 1)/renderer.width)
+                    return rgb
+                }))
+            }
+            renderFunctions[1] = () => renderer.renderProgramme(new ImageProgramme(document.images[0]))
+            renderFunctions[2] = () => renderer.renderProgramme(new SpritesheetAnimationProgramme(document.images[1], 32, 16, 202, 5, 60)) //glogo-smol
+            renderFunctions[3] = () => renderer.renderProgramme(new SpritesheetAnimationProgramme(document.images[2], 124, 62, 202, 5, 60)) //glogo
+            renderFunctions[4] = () => renderer.renderProgramme(new SpritesheetAnimationProgramme(document.images[3], 100, 59, 9, 5, 20)) //transparent-sheet.png
+            renderFunctions[5] = () => playVideo("demo-video", 20) //hicc
+            renderFunctions[6] = () => playVideo("demo-video-2", 25) //hicc (small)
+            renderFunctions[7] = () => playVideo("demo-video-with-sound", 20) //hicc (small)
+            renderFunctions[8] = () => playVideo("demo-video-with-sound-2", 20) //hicc (small)
+
+            const renderSelector = document.getElementById("render-function-selector")
+            const randomAlphaCheckBox = document.getElementById("random-alpha-checkbox")
+            document.getElementsByTagName("button")[0].onclick = () => {
+                renderer.filterQueue.get(0).active = randomAlphaCheckBox.checked
+                renderFunctions[renderSelector.selectedIndex]()
+            }
+        </script>
+    </body>
+</html>
