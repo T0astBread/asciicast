@@ -1,0 +1,13 @@
+.ascii-container {
+    width: min-content;
+    font-family: monospace;
+    font-size: 1em;
+    line-height: .8em;
+    transform-origin: left;
+    transform: scaleX(1.333);
+    padding-right: 12em;
+}
+
+.hidden-canvas {
+    display: none;
+}

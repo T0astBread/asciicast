@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <link rel="stylesheet" href="ascii.css">
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                min-height: 100vh;
+                margin: 0;
+                background: #222;
+            }
+
+            .panel {
+                /* display: inline-block; */
+            }
+
+            #render-container {
+                font-size: .8em;
+            }
+
+            button {
+                vertical-align: top;
+            }
+
+            img {
+                display: none;
+            }
+        </style>
+        <script src="ascii.js"></script>
+        <title>ascii-render</title>
+    </head>
+    <body>
+        <div class="panel" id="render-container"></div>
+        <div class="panel">
+            <select id="render-function-selector">
+                <optgroup label="Effects">
+                    <option render="0">Gradient</option>
+                </optgroup>
+                <optgroup label="Static Images">
+                    <option render="1">Mokou</option>
+                </optgroup>
+                <optgroup label="Spritesheet Animations">
+                    <option render="2">Google Logo (small)</option>
+                    <option render="3">Google Logo</option>
+                    <option render="4">Partially Transparent</option>
+                </optgroup>
+            </select>
+            <input id="random-alpha-checkbox" type="checkbox" title="Random Alpha"><label for="random-alpha-checkbox">Random Alpha</label>
+            <button>Render</button>
+            <img src="mokou-smol.png">
+            <img src="glogo-sheet-smol.png">
+            <img src="glogo-sheet.png">
+            <img src="transparent-sheet.png">
+        </div>
+        <script>
+            var renderer = new AsciiRenderer(document.getElementById("render-container"))
+
+            const renderFunctions = []
+            renderFunctions[0] = () => {
+                renderer.setUp(75, 75)
+                renderer.displayFunction({
+                    red: (x, y) => parseInt((x + 1)/renderer.width * 255),
+                    green: (x, y) => parseInt(.2 * 255),
+                    blue: (x, y) => parseInt(.5 * 255),
+                    alpha: (x, y) => (x + 1)/renderer.width
+                })
+            }
+            renderFunctions[1] = () => renderer.displayImage(document.images[0])
+            renderFunctions[2] = () => renderer.displaySpritesheetAnimation(document.images[1], 32, 16, 202, 5, 60) //glogo-smol
+            renderFunctions[3] = () => renderer.displaySpritesheetAnimation(document.images[2], 124, 62, 202, 5, 60) //glogo
+            renderFunctions[4] = () => renderer.displaySpritesheetAnimation(document.images[3], 100, 59, 9, 5, 20) //sheet.png
+
+            const renderSelector = document.getElementById("render-function-selector")
+            const randomAlphaCheckBox = document.getElementById("random-alpha-checkbox")
+            document.getElementsByTagName("button")[0].onclick = () => {
+                renderer.setRandomAlpha(randomAlphaCheckBox.checked)
+                renderFunctions[renderSelector.selectedIndex]()
+            }
+        </script>
+    </body>
+</html>
