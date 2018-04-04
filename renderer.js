@@ -146,6 +146,7 @@ class HiddenCanvasProgramme extends Programme {
 class FilterQueue {
     constructor() {
         this.queue = []
+        this.activeQueue = []
     }
 
     /**
@@ -153,24 +154,62 @@ class FilterQueue {
      * @param {Filter} filter 
      */
     add(filter) {
+        filter.enclosingQueue = this
         this.queue.push(filter)
+        if(filter.active) this.activeQueue.push(filter)
     }
 
     get(index) {
         return this.queue[index]
     }
 
+    refreshActiveQueue() {
+        this.activeQueue = this.queue.filter(filter => filter.active)
+    }
+
     applyFilters(colorValues) {
-        this.queue.forEach(filter => {
-            if(filter.active) colorValues = filter.transform(colorValues)
+        let filteredValues
+        const applyWithWeight = (index, weight) => colorValues[index] =
+            Math.round(colorValues[index] * (1 - weight) + filteredValues[index] * weight)
+        this.activeQueue.forEach(filter => {
+            if(filter.active) {
+                filteredValues = filter.transform(colorValues)
+                for(let i = 0; i < 3; i++) applyWithWeight(i, filter.weight)
+                colorValues[3] = colorValues[3] * (1 - filter.weight) + filteredValues[3] * filter.weight
+            }
         })
         return colorValues
     }
 }
 
 class Filter {
-    constructor(transform) {
-        this.transform = transform
+    constructor() {
+        this.inputBuffer = [0, 0, 0, 1] //[r, g, b, a]
+        this.outputBuffer = [0, 0, 0, 1] //[r, g, b, a]
         this.active = true
+        this.weight = 1
     }
+
+    activated(active) {
+        this.active = active
+        if(this.enclosingQueue) this.enclosingQueue.refreshActiveQueue()
+        return this
+    }
+
+    weighted(weight) {
+        this.weight = weight
+        this.active = weight !== 0
+        return this
+    }
+
+    transform(colorValues) {
+        for(let i = 0; i < 4; i++) {
+            this.inputBuffer[i] = colorValues[i]
+            this.outputBuffer[i] = colorValues[i]
+        }
+        this.transformInput()
+        return this.outputBuffer
+    }
+
+    transformInput() {}
 }

@@ -16,10 +16,6 @@
                 background: #222;
             }
 
-            .panel {
-                /* display: inline-block; */
-            }
-
             #render-container {
                 font-size: .8em;
             }
@@ -38,7 +34,7 @@
         <title>ascii-render</title>
     </head>
     <body>
-        <div class="panel" id="render-container"></div>
+        <div class="panel ascii-container" id="render-container"></div>
         <div class="panel">
             <select id="render-function-selector">
                 <optgroup label="Effects">
@@ -59,7 +55,8 @@
                     <option>Kill Me Baby Ending</option>
                 </optgroup>
             </select>
-            <input id="random-alpha-checkbox" type="checkbox" title="Random Alpha"><label for="random-alpha-checkbox">Random Alpha</label>
+            <input id="saturation-slider" type="range" min="0" max="3" step=".1" value="2.5"><label for="saturation-slider">Saturation</label>
+            <input id="brightness-slider" type="range" min="-255" max="255" step="1" value="-28"><label for="brightness-slider">Brightness</label>
             <button>Render</button>
             <img src="mokou-smol.png">
             <img src="glogo-sheet-smol.png">
@@ -80,8 +77,11 @@
         </div>
         <script>
             let renderer = new AsciiRenderer(document.getElementById("render-container"))
-            renderer.filterQueue.add(randomAlphaFilter)
-            // renderer.filterQueue.add(invertedColorsFilter)
+            renderer.filterQueue.add(new BrightnessFilter())
+            renderer.filterQueue.add(new FakeSaturationFilter())
+            renderer.filterQueue.add(new InvertFilter())
+            renderer.filterQueue.add(new AlphaFilter())
+            renderer.filterQueue.add(new StaticColorFilter().weighted(1).changeColor(0, 0, 0))
 
             const videos = document.getElementsByTagName("video")
             const playVideo = (id, fps) => {
@@ -115,8 +115,11 @@
 
             const renderSelector = document.getElementById("render-function-selector")
             const randomAlphaCheckBox = document.getElementById("random-alpha-checkbox")
+            const brightnessSlider = document.getElementById("brightness-slider")
+            const saturationSlider = document.getElementById("saturation-slider")
             document.getElementsByTagName("button")[0].onclick = () => {
-                renderer.filterQueue.get(0).active = randomAlphaCheckBox.checked
+                renderer.filterQueue.get(0).changeBrightness(parseFloat(brightnessSlider.value))
+                renderer.filterQueue.get(1).changeSaturation(parseFloat(saturationSlider.value))
                 renderFunctions[renderSelector.selectedIndex]()
             }
         </script>
