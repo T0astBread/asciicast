@@ -5,6 +5,12 @@
     line-height: .8em;
     transform-origin: left;
     transform: scaleX(1.333);
+    background-color: white;
+}
+
+.ascii-container.dark {
+    background-color: black;
+    color: white;
 }
 
 .hidden-canvas {
