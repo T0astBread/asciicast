@@ -108,6 +108,11 @@ class VideoProgramme extends HiddenCanvasProgramme {
         console.log(`Setup took ${Date.now() - startTimestamp}ms`)
 
         console.log("Starting video animation")
-        this.video.play().then(drawSnapshot)
+
+        let initialStartListener = this.video.addEventListener("play", () => {
+            this.video.removeEventListener("play", initialStartListener)
+            drawSnapshot()
+        }) 
+        this.video.play()
     }
 }
